@@ -11,14 +11,14 @@
  *******************************************************************************/
 package org.jacoco.startup;
 
-import static java.lang.String.format;
+import org.jacoco.core.tools.ExecDumpClient;
+import org.jacoco.core.tools.ExecFileLoader;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 
-import org.jacoco.core.tools.ExecDumpClient;
-import org.jacoco.core.tools.ExecFileLoader;
+import static java.lang.String.format;
 
 /**
  * This example connects to a coverage agent that run in output mode
@@ -42,6 +42,10 @@ public final class ExecutionDataClient {
 
     public ExecutionDataClient(File destFile, String address, int port) {
         this(true, false, destFile, address, port, 5, true);
+    }
+
+    public ExecutionDataClient(File destFile, String address, int port,boolean reset) {
+        this(true, reset, destFile, address, port, 5, true);
     }
 
     public ExecutionDataClient(boolean dump, boolean reset, File destFile, String address, int
@@ -93,17 +97,4 @@ public final class ExecutionDataClient {
         }
     }
 
-    /**
-     * Starts the execution data request.
-     *
-     * @param args
-     * @throws IOException
-     */
-    public static void main(final String[] args) throws IOException {
-        ExecutionDataClient client = new ExecutionDataClient(
-                new File("/Users/yanpengfang/Desktop/sq_jacoco/jacoco-client.exec"),
-                "localhost",
-                8044);
-        client.dump();
-    }
 }

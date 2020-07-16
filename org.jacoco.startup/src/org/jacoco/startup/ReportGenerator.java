@@ -11,9 +11,6 @@
  *******************************************************************************/
 package org.jacoco.startup;
 
-import java.io.File;
-import java.io.IOException;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Options;
@@ -23,18 +20,19 @@ import org.jacoco.core.analysis.Analyzer;
 import org.jacoco.core.analysis.CoverageBuilder;
 import org.jacoco.core.analysis.IBundleCoverage;
 import org.jacoco.core.tools.ExecFileLoader;
-import org.jacoco.report.DirectorySourceFileLocator;
-import org.jacoco.report.FileMultiReportOutput;
-import org.jacoco.report.IReportVisitor;
-import org.jacoco.report.ISourceFileLocator;
-import org.jacoco.report.MultiSourceFileLocator;
+import org.jacoco.report.*;
 import org.jacoco.report.html.HTMLFormatter;
+
+import java.io.File;
+import java.io.IOException;
+
+import static java.lang.String.format;
 
 /**
  * This example creates a HTML report for eclipse like projects based on a
  * single execution data store called jacoco.exec. The report contains no
  * grouping information.
- *
+ * <p>
  * The class files under test must be compiled with debug information, otherwise
  * source highlighting will not work.
  */
@@ -46,15 +44,15 @@ public class ReportGenerator {
      * @throws IOException
      */
     public static void create(String title,
-            File executionDataFile,
-            File reportDirectory,
-            File[] sourceDirs,
-            File[] classDirs,
-            String gitPath,
-            String branch,
-            String compareBranch,
-            String tag,
-            String compareTag)
+                              File executionDataFile,
+                              File reportDirectory,
+                              File[] sourceDirs,
+                              File[] classDirs,
+                              String gitPath,
+                              String branch,
+                              String compareBranch,
+                              String tag,
+                              String compareTag)
             throws IOException {
 
         // Read the jacoco.exec file. Multiple data files could be merged
@@ -75,7 +73,7 @@ public class ReportGenerator {
     }
 
     private static void createReport(final IBundleCoverage bundleCoverage, File reportDirectory,
-            ExecFileLoader execFileLoader, File[] sourceDirs)
+                                     ExecFileLoader execFileLoader, File[] sourceDirs)
             throws IOException {
 
         // Create a concrete report visitor based on some supplied
@@ -119,12 +117,12 @@ public class ReportGenerator {
     }
 
     private static IBundleCoverage analyzeStructure(String title, ExecFileLoader execFileLoader,
-            String gitPath,
-            String branch,
-            String compareBranch,
-            String tag,
-            String compareTag,
-            File[] classDirs) throws IOException {
+                                                    String gitPath,
+                                                    String branch,
+                                                    String compareBranch,
+                                                    String tag,
+                                                    String compareTag,
+                                                    File[] classDirs) throws IOException {
         CoverageBuilder coverageBuilder = null;
         if (StringUtils.isEmptyOrNull(tag)) {
             if (StringUtils.isEmptyOrNull(compareBranch)) {
@@ -154,8 +152,8 @@ public class ReportGenerator {
      * Starts the report generation process
      *
      * @param args
-     *            Arguments to the application. This will be the location of the
-     *            eclipse projects that will be used to generate reports for
+     * Arguments to the application. This will be the location of the
+     * eclipse projects that will be used to generate reports for
      * @throws IOException
      */
     private static final String GIT_WORK_DIR = "git-work-dir";
@@ -174,59 +172,74 @@ public class ReportGenerator {
     private static final String MYSQL_PASSWORD = "mysql-password";
 
     public static void main(final String[] args) {
-        try {
-            CommandLine commandLine = parseCmmandLine(args);
-            String execFile;
-            String reportDir = commandLine.getOptionValue(REPORT_DIR);
-            if (!commandLine.hasOption(EXEC_DIR)) {
-                execFile = reportDir.endsWith("/") ? reportDir + "exec/sq_jacoco.exec" :
-                        reportDir + "/exec/sq_jacoco.exec";
-            } else {
-                String execDir = commandLine.getOptionValue(EXEC_DIR);
-                execFile = execDir.endsWith("/") ? execDir + "sq_jacoco.exec" :
-                        execDir + "/sq_jacoco.exec";
-            }
-            //下载exec文件
-            ExecutionDataClient client = new ExecutionDataClient(
-                    new File(execFile),
-                    commandLine.getOptionValue(REMOTE_HOST),
-                    Integer.parseInt(commandLine.getOptionValue(REMOTE_PORT)));
-            client.dump();
+        while (1 == 1) {
+            try {
+                CommandLine commandLine = parseCmmandLine(args);
+                String execFile;
+                String reportDir = commandLine.getOptionValue(REPORT_DIR);
+                if (!commandLine.hasOption(EXEC_DIR)) {
+                    execFile = reportDir.endsWith("/") ? reportDir + "exec/sq_jacoco.exec" :
+                            reportDir + "/exec/sq_jacoco.exec";
+                } else {
+                    String execDir = commandLine.getOptionValue(EXEC_DIR);
+                    execFile = execDir.endsWith("/") ? execDir + "sq_jacoco.exec" :
+                            execDir + "/sq_jacoco.exec";
+                }
+                String optionValue = commandLine.getOptionValue(REMOTE_HOST);
+                String[] hosts = optionValue.split("\\s*,\\s*");
+                Integer port = Integer.parseInt(commandLine.getOptionValue(REMOTE_PORT));
+                for (String host : hosts) {
+                    System.out.println(format("dump exec start to %s:%d", host, port));
+                    //下载exec文件
+                    ExecutionDataClient client = new ExecutionDataClient(
+                            new File(execFile),
+                            host, port, true
+                    );
+                    client.dump();
+                    if (hosts.length > 0) {
+                        Thread.sleep(5000);
+                    }
+                    System.out.println(format("dump exec end to %s:%d", host, port));
+                }
 
-            //生成报告
-            String branch = commandLine.getOptionValue(BRANCH);
-            String compareBranch = commandLine.getOptionValue(COMPARE_BRANCH);
-            String gitWorkDir = commandLine.getOptionValue(GIT_WORK_DIR);
-            String tag = commandLine.getOptionValue(TAG);
-            String compareTag = commandLine.getOptionValue(COMPARE_TAG);
-            String sourceDirsStr = commandLine.getOptionValue(SOURCE_DIRS);
-            String[] sourceDirs = sourceDirsStr.split("\\s*,\\s*");
-            File[] sourceDirFiles = new File[sourceDirs.length];
-            String classDirsStr = commandLine.getOptionValue(CLASS_DIRS);
-            String[] classDirs = classDirsStr.split("\\s*,\\s*");
-            File[] classDirFiles = new File[classDirs.length];
-            String title = new File(gitWorkDir).getName();
-            for (int i = 0; i < classDirs.length; ++i) {
-                classDirFiles[i] = new File(classDirs[i]);
+
+                //生成报告
+                String branch = commandLine.getOptionValue(BRANCH);
+                String compareBranch = commandLine.getOptionValue(COMPARE_BRANCH);
+                String gitWorkDir = commandLine.getOptionValue(GIT_WORK_DIR);
+                String tag = commandLine.getOptionValue(TAG);
+                String compareTag = commandLine.getOptionValue(COMPARE_TAG);
+                String sourceDirsStr = commandLine.getOptionValue(SOURCE_DIRS);
+                String[] sourceDirs = sourceDirsStr.split("\\s*,\\s*");
+                File[] sourceDirFiles = new File[sourceDirs.length];
+                String classDirsStr = commandLine.getOptionValue(CLASS_DIRS);
+                String[] classDirs = classDirsStr.split("\\s*,\\s*");
+                File[] classDirFiles = new File[classDirs.length];
+                String title = new File(gitWorkDir).getName();
+                for (int i = 0; i < classDirs.length; ++i) {
+                    classDirFiles[i] = new File(classDirs[i]);
+                }
+                for (int i = 0; i < sourceDirs.length; ++i) {
+                    sourceDirFiles[i] = new File(sourceDirs[i]);
+                }
+                String mysqlJdbcUrl = commandLine.getOptionValue(MYSQL_JDBC_URL);
+                String userName = commandLine.getOptionValue(MYSQL_USER);
+                String password = commandLine.getOptionValue(MYSQL_PASSWORD);
+                CoverageBuilder.init(mysqlJdbcUrl, userName, password, title);
+                create(title, new File(execFile),
+                        new File(reportDir),
+                        sourceDirFiles,
+                        classDirFiles,
+                        gitWorkDir,
+                        branch,
+                        compareBranch,
+                        tag,
+                        compareTag);
+                //dump生成报告间隔
+                Thread.sleep(60000);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            for (int i = 0; i < sourceDirs.length; ++i) {
-                sourceDirFiles[i] = new File(sourceDirs[i]);
-            }
-            String mysqlJdbcUrl = commandLine.getOptionValue(MYSQL_JDBC_URL);
-            String userName = commandLine.getOptionValue(MYSQL_USER);
-            String password = commandLine.getOptionValue(MYSQL_PASSWORD);
-            CoverageBuilder.init(mysqlJdbcUrl, userName, password, title);
-            create(title, new File(execFile),
-                    new File(reportDir),
-                    sourceDirFiles,
-                    classDirFiles,
-                    gitWorkDir,
-                    branch,
-                    compareBranch,
-                    tag,
-                    compareTag);
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
